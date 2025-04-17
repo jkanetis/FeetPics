@@ -5,7 +5,7 @@ import os
 from datetime import datetime
 
 # Load the 3D model
-mesh = pv.read("human_foot.obj")
+mesh = pv.read("feet.obj")
 
 # Start PyVista plotter
 plotter = pv.Plotter()
@@ -20,7 +20,7 @@ plotter.add_mesh(mesh, scalars="face_colors", rgb=True)
 # Track drawing mode and current sensation
 drawing_mode = [False]
 current_sensation = ["none"]
-mouse_down = {"left": True}
+mouse_down = {"left": False}  # Track left mouse button state
 
 # Define color mapping for each sensation
 sensation_colors = {
@@ -42,7 +42,6 @@ plotter.iren.interactor_style = None  # Lock camera rotation
 
 # Function to update button display
 def update_buttons(active):
-    # Remove old buttons (by name)
     for name in list(plotter.actors.keys()):
         if name.endswith("_button"):
             plotter.remove_actor(name)
@@ -61,7 +60,6 @@ def update_buttons(active):
             shadow=shadow
         )
 
-    # Add Stop, Save, Lock, Unlock, Quit buttons
     extra_buttons = [
         ("Stop", "black", "stop_button"),
         ("Save", "green", "save_button"),
@@ -126,20 +124,6 @@ def quit_application():
     plotter.close()
 
 # Drawing on the foot model
-# def draw_on_foot(*args):
-#     if not drawing_mode[0]:
-#         return
-
-#     x, y = plotter.iren.get_event_position()
-#     picker.Pick(x, y, 0, plotter.renderer)
-#     picked_cell_id = picker.GetCellId()
-
-#     if picked_cell_id >= 0 and current_sensation[0] in sensation_colors:
-#         colors[picked_cell_id] = sensation_colors[current_sensation[0]]
-#         mesh.cell_data["face_colors"] = colors
-#         plotter.update_scalars(colors)
-#         plotter.render()
-
 def draw_on_foot(*args):
     if not drawing_mode[0]:
         return
@@ -152,7 +136,6 @@ def draw_on_foot(*args):
         new_color = np.array(sensation_colors[current_sensation[0]])
         current_color = colors[picked_cell_id]
 
-        # If current color is not the default gray, average with new color
         if not np.allclose(current_color, [0.8, 0.8, 0.8]):
             blended_color = (current_color + new_color) / 2
             colors[picked_cell_id] = blended_color
@@ -163,14 +146,10 @@ def draw_on_foot(*args):
         else:
             colors[picked_cell_id] = new_color
 
-        # ⚠️ Force mesh update by reassigning a new copy of the array
         mesh.cell_data["face_colors"] = colors.copy()
-
-        # ⚠️ Refresh the color mapping with updated array
         plotter.update_scalars(colors.copy(), render=True)
 
 # Handle button clicks
-
 def handle_mouse_click(*args):
     x, y = plotter.iren.get_event_position()
     
@@ -195,25 +174,27 @@ def handle_mouse_click(*args):
         if window_width - 150 <= x <= window_width - 50 and btn_y <= y <= btn_y + 25:
             action()
             return
-        
+
+# Mouse event handlers
 def on_left_press(obj, event):
     mouse_down["left"] = not mouse_down["left"]
     print("set mouse down to true")
     handle_mouse_click()
     draw_on_foot()
-    
-def on_mouse_move(obj, event): 
+
+def on_mouse_move(obj, event):
     if mouse_down["left"]:
         print("mouse is held down")
         draw_on_foot()
 
-def on_left_release(obj,event):
+def on_left_release(obj, event):
+    
     print("mouse is up")
 
-# Register mouse events
-#plotter.iren.add_observer("MouseMoveEvent", draw_on_foot)
-plotter.iren.add_observer("LeftButtonPressEvent", handle_mouse_click)
-plotter.iren.add_observer("LeftButtonPressEvent", draw_on_foot)
+# Register mouse event observers
+plotter.iren.add_observer("LeftButtonPressEvent", on_left_press)
+plotter.iren.add_observer("MouseMoveEvent", on_mouse_move)
+plotter.iren.add_observer("LeftButtonReleaseEvent", on_left_release)
 
 # Initialize UI
 update_buttons("none")
