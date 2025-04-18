@@ -5,7 +5,7 @@ import os
 from datetime import datetime
 
 # Load the 3D model
-mesh = pv.read("feet.obj")
+mesh = pv.read("mesh_test1.obj")
 
 # Start PyVista plotter
 plotter = pv.Plotter()
