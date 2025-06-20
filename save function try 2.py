@@ -11,7 +11,7 @@ mesh = pv.read("human_foot.obj")
 plotter = pv.Plotter()
 
 # Initialize colors array for each face (cell)
-colors = np.ones((mesh.n_cells, 3)) * 0.8  # Set initial gray color for each face
+colors = np.ones((mesh.n_cells, a3)) * 0.8  # Set initial gray color for each face
 mesh.cell_data["face_colors"] = colors
 
 # Add the mesh to the plotter, specifying cell scalars for face coloring

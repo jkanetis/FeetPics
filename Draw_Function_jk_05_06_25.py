@@ -3,12 +3,21 @@ import numpy as np
 import vtk
 import os
 from datetime import datetime
+import tkinter as tk
+import sys
+
+# Get screen dimensions using tkinter
+root = tk.Tk()
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+#root.destroy()  # Clean up the hidden window
 
 # Load the 3D model
 mesh = pv.read("Obj Files/mesh_test2.obj")
-
-# Start PyVista plotter
-plotter = pv.Plotter()
+#mesh = pv.read("edited.obj")
+#mesh = pv.read("mesh_test2.obj")
+# Start PyVista plotter with screen size
+plotter = pv.Plotter(window_size=[screen_width, screen_height-100])
 
 # Initialize colors array for each face (cell)
 colors = np.ones((mesh.n_cells, 3)) * 0.8  # Set initial gray color for each face
@@ -34,11 +43,14 @@ sensation_colors = {
 picker = vtk.vtkCellPicker()
 picker.SetTolerance(0.01)
 
-# Get window dimensions
+# Get window dimensions after the window is created
 window_width = plotter.window_size[0]
 window_height = plotter.window_size[1]
 
 plotter.iren.interactor_style = None  # Lock camera rotation
+
+dist_from_edge = 300
+space_clicked = False
 
 # Function to update button display
 def update_buttons(active):
@@ -48,12 +60,13 @@ def update_buttons(active):
 
     y_offset = 10
     spacing = 40
+    #define cell size + box
     for i, (sensation, color) in enumerate(sensation_colors.items()):
         label = sensation.upper() if active == sensation else sensation.capitalize()
         shadow = True if active == sensation else False
         plotter.add_text(
             label,
-            position=(window_width - 150, y_offset + i * spacing),
+            position=(window_width - dist_from_edge, y_offset + i * spacing),
             font_size=16,
             color=color,
             name=f"{sensation}_button",
@@ -72,7 +85,7 @@ def update_buttons(active):
         highlight = (active.lower() == label.lower())
         plotter.add_text(
             label.upper() if highlight else label,
-            position=(window_width - 100, pos_y),
+            position=(window_width - dist_from_edge, pos_y),
             font_size=16,
             color=color,
             name=name,
@@ -119,13 +132,17 @@ def save_image():
 
 # Quit the application
 def quit_application():
+    mesh.save("modified_mesh.vtk")
     update_buttons("quit")
     plotter.render()
     plotter.close()
+    sys.exit()
+
 
 # Drawing on the foot model
 def draw_on_foot(*args):
-    if not drawing_mode[0]:
+    print("drawing")
+    if not space_clicked:
         return
 
     x, y = plotter.iren.get_event_position()
@@ -157,7 +174,7 @@ def handle_mouse_click(*args):
     spacing = 40
 
     for i, sensation in enumerate(sensation_colors):
-        if window_width - 150 <= x <= window_width - 50 and y_offset + i * spacing <= y <= y_offset + i * spacing + 25:
+        if window_width - dist_from_edge <= x <= window_width - 50 and y_offset + i * spacing <= y <= y_offset + i * spacing + 25:
             set_sensation_mode(sensation)
             return
 
@@ -171,30 +188,34 @@ def handle_mouse_click(*args):
 
     for j, (label, action) in enumerate(extra_actions):
         btn_y = y_offset + (len(sensation_colors) + j) * spacing
-        if window_width - 150 <= x <= window_width - 50 and btn_y <= y <= btn_y + 25:
+        if window_width - dist_from_edge <= x <= window_width - 50 and btn_y <= y <= btn_y + 25:
             action()
             return
 
 # Mouse event handlers
 def on_left_press(obj, event):
-    mouse_down["left"] = not mouse_down["left"]
-    print("set mouse down to true")
     handle_mouse_click()
-    draw_on_foot()
+    #draw_on_foot()
 
 def on_mouse_move(obj, event):
-    if mouse_down["left"]:
-        print("mouse is held down")
+    if space_clicked:
+        print("drawing")
         draw_on_foot()
 
-def on_left_release(obj, event):
-    
-    print("mouse is up")
+# def on_left_release(obj, event):
+#     print("mouse is up")
+
+def begin_draw():
+    print("Drawing begin")
+    global space_clicked
+    space_clicked = not space_clicked
 
 # Register mouse event observers
 plotter.iren.add_observer("LeftButtonPressEvent", on_left_press)
 plotter.iren.add_observer("MouseMoveEvent", on_mouse_move)
-plotter.iren.add_observer("LeftButtonReleaseEvent", on_left_release)
+plotter.add_key_event("g", begin_draw)
+
+
 
 # Initialize UI
 update_buttons("none")
